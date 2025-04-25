@@ -11,7 +11,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("RFID Workflow Management Suite")
-        self.resize(1200, 800)
+        self.resize(1000, 700)
         # Printer data (mock, globally shared)
         self.printer_data = {}
         for i in range(1, 11):

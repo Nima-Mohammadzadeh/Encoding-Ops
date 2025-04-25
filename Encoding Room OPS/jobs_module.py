@@ -8,27 +8,18 @@ from bartender_step import BarTenderStep
 from test_print import TestPrintStep
 from docs_export import DocsExportStep
 from PyQt6.QtGui import QIntValidator
+from PyQt6.QtWidgets import QComboBox, QCompleter
 import os
 import datetime
+from util import get_all_customers, get_all_label_sizes, get_inlay_types
+
 
 # --- Utility functions from above ---
 from util import get_all_customers, get_all_label_sizes
 
 CUSTOMERS_ROOT = r"Z:\3 Encoding and Printing Files\Customers Encoding Files"
 
-def get_label_sizes_for_customer(customer):
-    cust_dir = os.path.join(CUSTOMERS_ROOT, customer)
-    if not os.path.exists(cust_dir):
-        return []
-    import re
-    label_size_pattern = re.compile(r'^\s*(\d+)\s*x\s*(\d+)\s*$', re.IGNORECASE)
-    label_sizes = []
-    for name in os.listdir(cust_dir):
-        if os.path.isdir(os.path.join(cust_dir, name)):
-            match = label_size_pattern.match(name)
-            if match:
-                label_sizes.append(f"{match.group(1)} x {match.group(2)}")
-    return sorted(set(label_sizes))
+
 
 def make_job_folder(customer, label_size, job_ticket, po):
     today = datetime.datetime.now().strftime("%Y-%m-%d")
@@ -42,96 +33,130 @@ def make_job_folder(customer, label_size, job_ticket, po):
     return path
 
 class JobWizard(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, data: dict = None, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Add New Job")
-        layout = QFormLayout(self)
+        self.setWindowTitle("New Job")
+        form = QFormLayout(self)
 
-        # Customer Dropdown with autocomplete+typing
-        self.customer_box = QComboBox()
-        self.customer_box.setEditable(True)
-        customers = get_all_customers()
-        self.customer_box.addItems(customers)
-        self.customer_box.setCompleter(QCompleter(customers, self))
-        self.customer_box.currentIndexChanged.connect(self.update_label_sizes)
+        custs = get_all_customers()
+        self.customer = QComboBox()
+        self.customer.setEditable(True)
+        self.customer.addItems(custs)
+        self.customer.setCompleter(QCompleter(custs, self))
+        form.addRow("Customer", self.customer)
 
-        layout.addRow("Customer:", self.customer_box)
+        self.jobticket = QLineEdit(); form.addRow("Job Ticket", self.jobticket)
+        self.partnum = QLineEdit(); form.addRow("Part Num", self.partnum)
+        self.po = QLineEdit(); form.addRow("Customer PO", self.po)
+        self.item = QLineEdit(); form.addRow("Item", self.item)
 
-        # Label Size Dropdown with autocomplete+typing
-        self.label_size_box = QComboBox()
-        self.label_size_box.setEditable(True)
-        # Initially: all sizes across all customers (not per-customer, per your request)
+        inlays = get_inlay_types()
+        self.inlay_type = QComboBox()
+        self.inlay_type.setEditable(True)
+        self.inlay_type.addItems(inlays)
+        self.inlay_type.setCompleter(QCompleter(inlays, self))
+        form.addRow("Inlay Type", self.inlay_type)
+
         all_label_sizes = get_all_label_sizes()
-        self.label_size_box.addItems(all_label_sizes)
-        self.label_size_box.setCompleter(QCompleter(all_label_sizes, self))
+        self.label_size = QComboBox()
+        self.label_size.setEditable(True)
+        self.label_size.addItems(all_label_sizes)
+        self.label_size.setCompleter(QCompleter(all_label_sizes, self))
+        form.addRow("Label Size", self.label_size)
 
-        layout.addRow("Label Size:", self.label_size_box)
+        self.qty = QLineEdit()
+        self.qty.setValidator(QIntValidator(1,99999999)); form.addRow("QTY", self.qty)
 
-        # Job Ticket #
-        self.jobticket_box = QLineEdit()
-        layout.addRow("Job Ticket #:", self.jobticket_box)
+        self.overage = QSpinBox()
+        self.overage.setSuffix("%"); self.overage.setRange(0,100)
+        form.addRow("Overage %", self.overage)
 
-        # PO Number
-        self.po_box = QLineEdit()
-        layout.addRow("PO Number:", self.po_box)
+        self.upc = QLineEdit()
+        self.upc.setMaxLength(15)
+        self.upc.textChanged.connect(self._format_upc)
+        form.addRow("UPC", self.upc)
 
-        # Printer Quantity
-        self.qty_box = QLineEdit()
-        self.qty_box.setValidator(QIntValidator(1, 99999999))
-        layout.addRow("Label QTY:", self.qty_box)
+        self.labels_per_roll = QLineEdit()
+        self.labels_per_roll.setValidator(QIntValidator(1,99999999))
+        self.labels_per_roll.textChanged.connect(self._calc_rolls)
+        form.addRow("Labels Per Roll", self.labels_per_roll)
 
-        # Finish/cancel
+        self.rolls = QLabel("0")
+        form.addRow("Rolls", self.rolls)
+
         btns = QHBoxLayout()
-        self.ok_btn = QPushButton("Finish")
-        self.cancel_btn = QPushButton("Cancel")
-        btns.addWidget(self.ok_btn)
-        btns.addWidget(self.cancel_btn)
-        layout.addRow(btns)
+        done = QPushButton("Finish"); cancel = QPushButton("Cancel")
+        btns.addWidget(done); btns.addWidget(cancel)
+        form.addRow(btns)
+        done.clicked.connect(self._finish)
+        cancel.clicked.connect(self.reject)
+        self.setLayout(form)
 
-        self.ok_btn.clicked.connect(self.accept)
-        self.cancel_btn.clicked.connect(self.reject)
-        self._result_data = None
+        self._result = None
+        
+        if data: self.fill(data)
 
-    def update_label_sizes(self):
-        # Optionally, you could make this update based on selected customer,
-        # or ignore (leave at all sizes) if you want to allow all.
-        pass  # in this version label sizes are all from all customers
 
-    def accept(self):
-        # Validate
-        cust = self.customer_box.currentText().strip()
-        lblsz = self.label_size_box.currentText().strip()
-        jobticket = self.jobticket_box.text().strip()
-        po = self.po_box.text().strip()
-        qty = self.qty_box.text().strip()
-        if not (cust and lblsz and jobticket and qty and qty.isdigit()):
-            QMessageBox.warning(self, "Error", "Please fill all fields (QTY must be number).")
-            return
-        self._result_data = {
-            "customer": cust,
-            "label_size": lblsz,
-            "job_ticket": jobticket,
-            "po": po,
-            "qty": int(qty),
+    def _format_upc(self, txt):
+        digits = "".join(c for c in txt if c.isdigit())[:12]
+        pretty = ""
+        for i, d in enumerate(digits):
+            pretty += d
+            if i in (2,5,8):
+                pretty += "\u2009"
+        self.upc.blockSignals(True)
+        self.upc.setText(pretty)
+        self.upc.blockSignals(False)
+        
+    def _calc_rolls(self):
+        try:
+            qty = int(self.qty.text())
+            per = int(self.labels_per_roll.text())
+            rolls = (qty + per - 1) // per
+            self.rolls.setText(str(rolls))
+        except:
+            self.rolls.setText("0")
+
+    def _finish(self):
+        # Validate, map to dict, accept or warn
+        # Map field values as per your  field names
+        # (Add validation as needed)
+        self.result = {
+            "customer": self.customer.currentText(),
+            "job_ticket": self.jobticket.text(),
+            "part_num": self.partnum.text(),
+            "customer_po": self.po.text(),
+            "item": self.item.text(),
+            "inlay_type": self.inlay_type.currentText(),
+            "label_size": self.label_size.currentText(),
+            "qty": int(self.qty.text().replace(",", "")),
+            "overage": str(self.overage.value()),
+            "upc": "".join(c for c in self.upc.text() if c.isdigit())[:12],
+            "labels_per_roll": int(self.labels_per_roll.text().replace(",", "")),
+            "rolls": int(self.rolls.text()),
         }
-        super().accept()
-
+        self.accept()
+        
     def get_data(self):
-        return self._result_data
+        return getattr(self, 'result', None)
+
+            
 
 class SingleJobWorkflowWidget(QWidget):
-    def __init__(self, job: JobData):
+    def __init__(self, job: JobData, jobs_modwidget=None):
         super().__init__()
         layout = QVBoxLayout()
-        tabs = QTabWidget()
-        tabs.addTab(EncodingChecklistTab(job), "Checklist")
-        tabs.addTab(DatabaseTab(job), "Database")
-        tabs.addTab(RollTrackerStep(job), "Roll Tracker")
-        tabs.addTab(BarTenderStep(job), "BarTender")
-        tabs.addTab(TestPrintStep(job), "Test Print & QC")
-        tabs.addTab(DocsExportStep(job), "Docs/Export")
-        layout.addWidget(tabs)
+        self.tabs = QTabWidget()
+        self.checklist_tab = EncodingChecklistTab(job, jobs_modwidget)
+        self.tabs.addTab(self.checklist_tab, "Checklist")
+        self.tabs.addTab(DatabaseTab(job), "Database")
+        self.tabs.addTab(RollTrackerStep(job), "Roll Tracker")
+        self.tabs.addTab(BarTenderStep(job), "BarTender")
+        self.tabs.addTab(TestPrintStep(job), "Test Print & QC")
+        self.tabs.addTab(DocsExportStep(job), "Docs/Export")
+        layout.addWidget(self.tabs)
         self.setLayout(layout)
+        
 
 class JobsModuleWidget(QWidget):
     def __init__(self):
@@ -165,36 +190,33 @@ class JobsModuleWidget(QWidget):
             job = self.jobs[row]
             while self.right_panel_layout.count():
                 item = self.right_panel_layout.takeAt(0)
-                widget = item.widget()
-                if widget: widget.deleteLater()
-            self.right_panel_layout.addWidget(SingleJobWorkflowWidget(job))
+                w = item.widget()
+                if w: w.deleteLater()
+            # Provide self for edit checklist re-entry
+            self.right_panel_layout.addWidget(SingleJobWorkflowWidget(job, self))
         else:
             while self.right_panel_layout.count():
                 item = self.right_panel_layout.takeAt(0)
-                widget = item.widget()
-                if widget: widget.deleteLater()
+                w = item.widget()
+                if w: w.deleteLater()
             self.right_panel_layout.addWidget(QLabel("No job selected."))
 
-    def new_job_dialog(self):
-        dlg = JobWizard(self)
+    def new_job_dialog(self, prefill=None):
+        dlg = JobWizard(prefill, self)
         if dlg.exec() == QDialog.DialogCode.Accepted:
             data = dlg.get_data()
-            if not data:
-                return
+            if not data: return
             folder_path = make_job_folder(
-                data['customer'], data['label_size'], data['job_ticket'], data['po']
+                data['customer'], data['label_size'], data['job_ticket'], data['customer_po']
             )
             job_name = f"{data['customer']} - {data['job_ticket']} - {data['label_size']}"
             job = JobData(job_name, data['job_ticket'], data['qty'])
+            job.checklist_data = data
             job.folder_path = folder_path
-            # Autofill checklist
-            job.checklist_data['customer'] = data['customer']
-            job.checklist_data['job_ticket'] = data['job_ticket']
-            job.checklist_data['qty'] = data['qty']
-            job.checklist_data['label_size'] = data['label_size']
-            job.checklist_data['customer_po'] = data['po']
             self.jobs.append(job)
             self.job_list.addItem(job_name)
             self.job_list.setCurrentRow(len(self.jobs) - 1)
-            QMessageBox.information(self, "Folder Created",
-                f"Job folder created at:\n{folder_path}\nJob added.")
+            QMessageBox.information(self, "Folder Created", f"Job folder:\n{folder_path}\nJob added.")
+
+    def edit_job(self, job:JobData):
+        self.new_job_dialog(prefill=job.checklist_data)
