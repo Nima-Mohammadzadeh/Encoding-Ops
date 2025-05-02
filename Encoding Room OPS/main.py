@@ -1,11 +1,14 @@
 import sys
 import random
 from PyQt6.QtWidgets import QApplication, QMainWindow, QTabWidget
-from dashboard import DashboardWidget
-from jobs_module import JobsModuleWidget
-from reports import ReportsWidget
-from settings import SettingsWidget
+
+from ui.dashboard import DashboardWidget
+from ui.jobs_module import JobsModuleWidget
+from ui.reports import ReportsWidget
+from ui.settings import SettingsWidget
+
 from util import current_time_str
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
