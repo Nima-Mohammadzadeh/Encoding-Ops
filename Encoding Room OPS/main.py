@@ -7,6 +7,7 @@ from ui.jobs_module import JobsModuleWidget
 from ui.reports import ReportsWidget
 from ui.settings import SettingsWidget
 
+
 from util import current_time_str
 
 

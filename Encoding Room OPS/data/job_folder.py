@@ -8,9 +8,4 @@ def get_job_dir(customer, label_size, job_ticket, po, date_str):
     job_name  = f"{date_str} - {po} - {job_ticket}"
     return os.path.join(size_dir, job_name)
 
-def create_job_folders(customer, label_size, job_ticket, po, date_str):
-    job_dir = get_job_dir(customer, label_size, job_ticket, po, date_str)
-    os.makedirs(os.path.join(job_dir, 'data'), exist_ok=True)
-    os.makedirs(os.path.join(job_dir, 'print'), exist_ok=True)
-    os.makedirs(os.path.join(job_dir, 'roll tracker'), exist_ok=True)
-    return job_dir
+

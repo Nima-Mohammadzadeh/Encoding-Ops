@@ -1,8 +1,36 @@
 from PyQt6.QtWidgets import *
+from PyQt6.QtCore import QObject, pyqtSignal, QThread
+
 import csv
 from config import SERIALS_CSV_PATH
 from util import update_latest_serial
 from data.jobdata import JobData
+
+
+
+
+class SerialAppendWorker(QObject):
+    finished = pyqtSignal(int)   # last serial written
+    error = pyqtSignal(str)
+
+    def __init__(self, serials):
+        super().__init__()
+        self.serials = serials
+
+    def run(self):
+        import csv
+        from util import SERIALS_CSV_PATH, update_latest_serial
+        try:
+            with open(SERIALS_CSV_PATH, 'a', newline='') as f:
+                writer = csv.writer(f)
+                for s in self.serials:
+                    writer.writerow([s])
+            if self.serials:
+                last_serial = int(self.serials[-1])
+                update_latest_serial(last_serial + 1)
+            self.finished.emit(last_serial)
+        except Exception as ex:
+            self.error.emit(str(ex))
 
 class DatabaseGeneratorTab(QWidget):
     def __init__(self, job: JobData):
@@ -76,13 +104,26 @@ class DatabaseGeneratorTab(QWidget):
             QMessageBox.information(self, "None", "Nothing to add.")
             return
         # Append
-        with open(SERIALS_CSV_PATH, 'a', newline='') as f:
-            writer = csv.writer(f)
-            for s in added:
-                writer.writerow([s])
-        if added:           
-            last_serial = int(added[-1])  # serials were str but numeric
-            update_latest_serial(last_serial + 1)        
-        self.refresh_table()
-        QMessageBox.information(self, "Saved", f"Saved {len(added)} serials. They are now reserved.")
+        self.progress = QProgressDialog("Saving serials...", None, 0, 0, self)
+        self.progress.setWindowModality(Qt.WindowModality.ApplicationModal)
+        self.progress.show()
+        self.serials_thread = QThread(self)
+        self.serials_worker = SerialAppendWorker(added)
+        self.serials_worker.moveToThread(self.serials_thread)
+        self.serials_thread.started.connect(self.serials_worker.run)
+        self.serials_worker.finished.connect(self.on_serial_save_finished)
+        self.serials_worker.finished.connect(self.serials_thread.quit)
+        self.serials_worker.finished.connect(self.serials_worker.deleteLater)
+        self.serials_thread.finished.connect(self.serials_thread.deleteLater)
+        self.serials_worker.error.connect(self.on_serial_save_error)
+        self.serials_thread.start()
         
+    def on_serial_save_finished(self, last_serial):
+        self.progress.close()
+        self.refresh_table()
+        QMessageBox.information(self, "Saved", f"Saved serials. Up to {last_serial} now reserved.")
+
+    def on_serial_save_error(self, msg):
+        self.progress.close()
+        QMessageBox.critical(self, "Error", f"Serial save error:\n{msg}")
+

@@ -4,6 +4,8 @@ import datetime
 from config import SERIALS_CSV_PATH, SETTINGS_JSON, DEFAULT_SETTINGS
 import json
 import ast
+from PyQt6.QtCore import QObject, pyqtSignal, QThread
+
 
 
 CUSTOMERS_ROOT = r"Z:\3 Encoding and Printing Files\Customers Encoding Files"
@@ -17,6 +19,21 @@ DEFAULT_SHIFT_SETTINGS = {
     "day": {"start": "06:00", "end": "18:00"},
     "night": {"start": "18:00", "end": "06:00"}
 }
+
+
+class CustomerListWorker(QObject):
+    finished = pyqtSignal(list)
+    error = pyqtSignal(str)
+
+    def run(self):
+        try:
+            from util import CUSTOMERS_ROOT
+            import os
+            customers = [d for d in os.listdir(CUSTOMERS_ROOT)
+                         if os.path.isdir(os.path.join(CUSTOMERS_ROOT, d))]
+            self.finished.emit(customers)
+        except Exception as ex:
+            self.error.emit(str(ex))
 
 
 def load_shift_settings():

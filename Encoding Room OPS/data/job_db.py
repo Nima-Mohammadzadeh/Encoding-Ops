@@ -3,6 +3,22 @@ import os
 from util import get_current_shift_and_dbdate, JOB_DB_DIR
 import glob
 
+JOB_DB_DIR = r"Z:\3 Encoding and Printing Files\Encoding Ops\Job list"  # Make sure this is here!
+
+
+def get_latest_db_path():
+    """
+    Returns the path to the latest (most recently modified) .db file in JOB_DB_DIR.
+    Returns None if no DB file exists.
+    """
+    pattern = os.path.join(JOB_DB_DIR, "*.db")
+    db_files = glob.glob(pattern)
+    if not db_files:
+        return None
+    return max(db_files, key=os.path.getmtime)
+
+
+
 def get_shift_db_path():
     """Return (dbfile_path, shift_name, db_date)"""
     pattern = os.path.join(JOB_DB_DIR, "*.db")
