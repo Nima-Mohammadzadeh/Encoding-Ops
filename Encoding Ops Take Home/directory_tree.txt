@@ -1,0 +1,57 @@
+Encoding Room OPS/
+    combined_code.txt
+    config.py
+    database_tab.py
+    directory_tree.txt
+    Encoding Checklist New WIPv2.odg
+    extract_all_code.py
+    label_sizes.txt
+    label_types.txt
+    main.py
+    pdf_viewer.html
+    project_tree.py
+    project_tree.txt
+    settings_config.json
+    testing_pdf_web.py
+    util.py
+    data/
+        combined_code.txt
+        jobdata.py
+        job_db.py
+        job_folder.py
+        serial_tracker.py
+        __init__.py
+    Encoding Checklists/
+        Encoding Checklist New V4.pdf
+        Encoding Checklist New WIP.xlsx
+        Encoding Checklist New WIPv2.odg
+        Encoding Checklist New WIPv2.pdf
+        Encoding Checklist New WIPv2.xlsx
+    jobs/
+    jobs_db/
+        jobs.db
+    ui/
+        dashboard.py
+        jobs_module.py
+        job_list_item_widget.py
+        module_selector.py
+        reports.py
+        settings.py
+        __init__.py
+    workflow/
+        bartender_step.py
+        combined_code.txt
+        database_generator.py
+        docs_export.py
+        encoding_checklist.py
+        roll_tracker.py
+        test_print.py
+        __init__.py
+    __pycache__/
+        config.cpython-310.pyc
+        database_tab.cpython-310.pyc
+        encoding_checklist.cpython-310.pyc
+        jobdata.cpython-310.pyc
+        job_folder.cpython-310.pyc
+        serial_tracker.cpython-310.pyc
+        util.cpython-310.pyc
