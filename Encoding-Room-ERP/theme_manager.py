@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import QApplication
 
 LIGHT_THEME = {
     "WINDOW_BACKGROUND": "#f8f9fa",
+    "SIDEBAR_BACKGROUND": "#ffffff",
     "CONTENT_BACKGROUND": "#ffffff",
     "PRIMARY_TEXT": "#212529",
     "SECONDARY_TEXT": "#495057",
@@ -30,6 +31,7 @@ LIGHT_THEME = {
 
 DARK_THEME = {
     "WINDOW_BACKGROUND": "#1a1a1a",
+    "SIDEBAR_BACKGROUND": "#212121",
     "CONTENT_BACKGROUND": "#2d2d2d",
     "PRIMARY_TEXT": "#e0e0e0",
     "SECONDARY_TEXT": "#b8b8b8",

@@ -21,9 +21,10 @@ class ScreenshotBrandLabel(QLabel):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setText("RFID Workflow Manager")
-        self.setFixedHeight(50)
-        font = QFont("Segoe UI", 16, QFont.Weight.Bold)
+        font = QFont("Segoe UI", 13, QFont.Weight.Bold)
         self.setFont(font)
+        self.setWordWrap(True)
+        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
 class ScreenshotActionIcon(QPushButton):
     """Action icon buttons matching the screenshot's right-side icons"""
@@ -56,7 +57,6 @@ class NavigationBar(QWidget):
         layout.setSpacing(10)
 
         self.brand_label = ScreenshotBrandLabel()
-        self.brand_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.brand_label)
         
         layout.addSpacerItem(QSpacerItem(20, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
@@ -130,6 +130,7 @@ class NavigationBar(QWidget):
                 color: {theme["PRIMARY_TEXT"]};
                 background-color: transparent;
                 padding-bottom: 10px;
+                padding-top: 5px;
             }}
         """)
         
